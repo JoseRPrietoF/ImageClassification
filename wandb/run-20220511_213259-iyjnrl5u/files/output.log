@@ -1,0 +1,24 @@
+
+-----------------------------------------------
+[34m[1mwandb[39m[22m: logging graph, to disable use `wandb.watch(log_graph=False)`
+GPU available: True, used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+Traceback (most recent call last):
+  File "main.py", line 90, in <module>
+    trainer.fit(net, imgDataset)
+  File "/home/jose/anaconda3/envs/clasification/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 738, in fit
+    self._call_and_handle_interrupt(
+  File "/home/jose/anaconda3/envs/clasification/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 683, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/jose/anaconda3/envs/clasification/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 773, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/jose/anaconda3/envs/clasification/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1134, in _run
+    self._call_setup_hook()  # allow user to setup lightning_module in accelerator environment
+  File "/home/jose/anaconda3/envs/clasification/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1434, in _call_setup_hook
+    self.datamodule.setup(stage=fn)
+  File "/home/jose/anaconda3/envs/clasification/lib/python3.8/site-packages/pytorch_lightning/core/datamodule.py", line 474, in wrapped_fn
+    fn(*args, **kwargs)
+  File "/data2/jose/projects/image_classif/data/dataset.py", line 64, in setup
+    self.tr_dataset = TextImageFromTextTableDataset(
+NameError: name 'TextImageFromTextTableDataset' is not defined
