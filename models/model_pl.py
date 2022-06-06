@@ -1,4 +1,5 @@
 from logging.config import valid_ident
+from sklearn.model_selection import validation_curve
 import torch.optim as optim
 import pytorch_lightning as pl
 import torch
@@ -7,12 +8,19 @@ import torch.nn.functional as F
 import numpy as np
 from .operations import ConvBlock
 import torchmetrics
-from transformers import AdamW, ResNetModel
+from transformers import AdamW, ResNetModel, SwinForImageClassification, ConvNextForImageClassification
+import torchvision.models as models
 
 class debug(nn.Module):
 
     def forward(self, x):
         print(x.shape)
+        return x
+class Identity(nn.Module):
+    def __init__(self):
+        super(Identity, self).__init__()
+        
+    def forward(self, x):
         return x
 
 class Net(pl.LightningModule):
@@ -23,7 +31,12 @@ class Net(pl.LightningModule):
                  learning_rate=0.001,
                  n_classes=3,
                  momentum=0,
-                 milestones=[5000,10000,15000,16000,18000]):
+                 milestones=[5000,10000,15000,16000,18000],
+                 model="resnet50",
+                torchvision = False,
+                layers=[128,128],
+                len_feats=1024,
+                DO_text=0.3):
         super(Net, self).__init__()
 
 
@@ -33,29 +46,93 @@ class Net(pl.LightningModule):
         self.learning_rate = learning_rate
         self.momentum = momentum
         self.milestones = milestones
+        self.model_selected = model
+        self.torchvision = torchvision
         
-        self.model = ResNetModel.from_pretrained("microsoft/resnet-50")
-        dim_out_last_channel = self.model.encoder.stages[-1].layers[-1].layer[-1].convolution.out_channels
-        
-        
+        if "fusion" in model:
+            model_text = [nn.Linear((len_feats), layers[0]),
+                    nn.BatchNorm1d(layers[0]),
+                    nn.ReLU(True),
+                    nn.Dropout(DO_text)
+                    ]
+            for i in range(1, len(layers)):
+                model_text = model_text + [nn.Linear(layers[i-1], layers[i]),
+                    nn.BatchNorm1d(layers[i]),
+                    nn.ReLU(True),
+                    nn.Dropout(DO_text)
+                    ]
+            self.model_text = nn.Sequential(*model_text)
+            print(self.model_text)
 
-        # conv = nn.Conv2d(dim_out_last_channel, dim_out_last_channel//4, kernel_size=4, stride=2, padding=1)
-        conv = ConvBlock(dim_out_last_channel, dim_out_last_channel//4, kernel_size=3, stride=1, poolsize=(2,2), batchnorm=True, activation=nn.ReLU)
-        dim_out_last_channel = dim_out_last_channel//4
-        # conv2 = nn.Conv2d(dim_out_last_channel, dim_out_last_channel//4, kernel_size=4, stride=2, padding=1)
-        conv2 = ConvBlock(dim_out_last_channel, dim_out_last_channel//4, kernel_size=3, stride=1, poolsize=(2,2), batchnorm=True, activation=nn.ReLU)
-        dim_out_last_channel = dim_out_last_channel//4
-        
-        steps = 5 + 2
-        new_w, new_h = (w // (2**steps)), (h // (2**steps))
-        new_shape = new_h * new_w * dim_out_last_channel
-        linear = nn.Linear(new_shape, n_classes)
-        print(w,h, new_w, new_h,dim_out_last_channel, new_shape )
-        # self.model = nn.Sequential(*[model, self.linear])
-        self.model_clasif = nn.Sequential(*[  conv, conv2, nn.Flatten(), linear])
+        if "resnet" in model:
+            if "resnet50" in model:
+                if torchvision:
+                    self.model = models.resnet50(pretrained=True)
+                else:
+                    self.model = ResNetModel.from_pretrained("microsoft/resnet-50")
+            elif "resnet18" in model:
+                # self.model = models.resnet18(pretrained=True)
+                self.model = ResNetModel.from_pretrained("microsoft/resnet-18")
+            elif "resnet101" in model:
+                # self.model = models.resnet101(pretrained=True)
+                self.model = ResNetModel.from_pretrained("microsoft/resnet-101")
+            # print(self.model.layer4[2].conv3)
+            if torchvision:
+                dim_out_last_channel = self.model.layer4[2].conv3.out_channels
+            else:
+                dim_out_last_channel = self.model.encoder.stages[-1].layers[-1].layer[-1].convolution.out_channels
+            # conv = nn.Conv2d(dim_out_last_channel, dim_out_last_channel//4, kernel_size=4, stride=2, padding=1)
+            conv = ConvBlock(dim_out_last_channel, dim_out_last_channel//4, kernel_size=3, stride=1, poolsize=(2,2), batchnorm=True, activation=nn.ReLU)
+            dim_out_last_channel = dim_out_last_channel//4
+            # conv2 = nn.Conv2d(dim_out_last_channel, dim_out_last_channel//4, kernel_size=4, stride=2, padding=1)
+            conv2 = ConvBlock(dim_out_last_channel, dim_out_last_channel//4, kernel_size=3, stride=1, poolsize=(2,2), batchnorm=True, activation=nn.ReLU)
+            dim_out_last_channel = dim_out_last_channel//4
+            
+            steps = 5 + 2
+            new_w, new_h = (w // (2**steps)), (h // (2**steps))
+            new_shape = new_h * new_w * dim_out_last_channel
+            if torchvision:
+                linear = nn.Linear(new_shape, n_classes)
+                print(w,h, new_w, new_h,dim_out_last_channel, new_shape )
+                # self.model = nn.Sequential(*[model, self.linear])
+                # self.model_clasif = nn.Sequential(*[  conv, conv2, nn.Flatten(), linear])
+                # self.model.fc = Identity()
+                self.model.avgpool = nn.Sequential(*[  conv, conv2])
+                print(self.model)
+                # print(self.model_clasif)
+                self.model.fc = linear
+            else:
+                if "fusion" in model:
+                    # linear = nn.Linear(new_shape, layers[-1])
+                    linear_text = nn.Sequential(*[nn.Linear(new_shape, layers[-1]),
+                        nn.BatchNorm1d(layers[-1]),
+                        nn.ReLU(True),
+                        nn.Dropout(DO_text)
+                    ])
+                    
+                    linear_fusion2_text = [nn.Linear( layers[-1], layers[-1]),
+                        nn.BatchNorm1d(layers[-1]),
+                        nn.ReLU(True),
+                        nn.Dropout(DO_text),
+                        nn.Linear(layers[-1], n_classes)
+                    ]
+                    # linear_fusion2 = linear_fusion2 + [nn.Linear(layers[-1], n_classes)]
+                    self.linear_fusion = nn.Sequential(*linear_fusion2_text)
+                    self.model_clasif = nn.Sequential(*[  conv, conv2, nn.Flatten(), linear_text])
+                else:
+                    linear = nn.Linear(new_shape, n_classes)
+                    self.model_clasif = nn.Sequential(*[  conv, conv2, nn.Flatten(), linear])
+                # self.model_clasif = nn.Sequential(*[ debug(), conv, debug(), conv2, debug(), nn.Flatten(), debug(), linear])
+                
+        elif "swintiny" in model:
+            self.model = SwinForImageClassification.from_pretrained("microsoft/swin-tiny-patch4-window7-224")
+            self.model.classifier = nn.Linear(768, n_classes)
+        elif "convnext" in model:
+            
+            self.model = ConvNextForImageClassification.from_pretrained("facebook/convnext-tiny-224")
+            self.model.classifier = nn.Linear(768, n_classes)
+
         print(self.model_clasif)
-        # print(self.model)
-
         # inputs = feature_extractor(image, return_tensors="pt")
 
         # with torch.no_grad():
@@ -79,16 +156,35 @@ class Net(pl.LightningModule):
 
 
 
-    def forward(self, x):
-        x = self.model(x).last_hidden_state
-        x = self.model_clasif(x)
+    def forward(self, batch):
+        if "fusion" in self.model_selected:
+            x_text = batch['text']
+            # x_text = torch.zeros_like(x_text)
+            x_text = self.model_text(x_text)
+        x = batch['pixel_values']
+        x = self.model(x)
+        if "resnet" in self.model_selected and not self.torchvision:
+            x = self.model_clasif(x.last_hidden_state)
+            # x = self.model_clasif(x)
+        else:
+            x = x.logits
+
+        if "fusion" in self.model_selected:
+            x = self.linear_fusion(x + x_text)
+
         x = F.log_softmax(x, dim=-1)
         # exit()
         return x
     
     def configure_optimizers(self):
+        def is_text(n): return 'text' in n
+        params = list(self.named_parameters())
+        grouped_parameters = [
+            {"params": [p for n, p in params if is_text(n)], 'lr': self.learning_rate},
+            {"params": [p for n, p in params if not is_text(n)], 'lr': self.learning_rate},
+        ]
         optimizer=AdamW(
-            self.parameters(), lr=self.learning_rate
+            grouped_parameters, lr=self.learning_rate
             )
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=self.milestones, gamma=0.5)
         return [optimizer], [scheduler]
@@ -96,9 +192,8 @@ class Net(pl.LightningModule):
   
     def training_step(self, train_batch, batch_idx):
         # get the inputs
-        hyp = self(train_batch['pixel_values'])
+        hyp = self(train_batch)
         hyp = self.m(hyp)
-
         loss = self.criterion(hyp, train_batch['labels'])
      
         self.log('train_loss', loss)
@@ -131,8 +226,8 @@ class Net(pl.LightningModule):
 
     
     def validation_step(self, val_batch, batch_idx):
-        print(batch_idx)
-        hyp = self(val_batch['pixel_values'])
+
+        hyp = self(val_batch)
         hyp = self.m(hyp)
         loss = self.criterion(hyp,val_batch['labels'])
         self.log('val_loss', loss)
@@ -168,7 +263,7 @@ class Net(pl.LightningModule):
     
     def test_step(self, test_batch, batch_idx):
         # get the inputs
-        hyp = self(test_batch['pixel_values'])
+        hyp = self(test_batch)
         hyp = self.m(hyp)
         
         loss = self.criterion(hyp,test_batch['labels'])
@@ -206,7 +301,7 @@ class Net(pl.LightningModule):
         # get the inputs
         # filename = train_batch['filenames']
         filename=""
-        hyp = self(train_batch['pixel_values'])
+        hyp = self(train_batch)
         hyp = self.m(hyp)
         outputs = torch.exp(hyp).cpu().detach().numpy()
         # print("Predicting image ", filename, outputs.shape)
@@ -244,3 +339,4 @@ class Net(pl.LightningModule):
                 size_w, kernel_size=ks[1], dilation=di[1], stride=st[1], poolsize=ps[1]
             )
         return size_h, size_w
+

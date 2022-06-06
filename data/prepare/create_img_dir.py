@@ -38,26 +38,27 @@ def read_csv(fpath, ktype):
         res.append((tip_abreviada, p_ini, p_fin))
     return res
 
-def init_JMBD4949(csv_path, img_dirs):
+def init_JMBD(csv_path, img_dirs, corpus):
+    if corpus == "JMBD4949":
         ktype = "49"
-        files = read_csv(csv_path, ktype=ktype)
-        # if ktype == "49":
-        #     file_names = glob.glob(os.path.join(self.img_dirs, "*.tif"))
-        # else:
-        #     file_names = glob.glob(os.path.join(self.img_dirs, "*.jpg"))
-        res = []
-        for tip_abreviada, p_ini, p_fin in files:
-            # print(tip_abreviada, p_ini, p_fin)
-            for num in range(p_ini, p_fin+1):
+    else:
+        ktype = "50"
+    files = read_csv(csv_path, ktype=ktype)
+    res = []
+    for tip_abreviada, p_ini, p_fin in files:
+        for num in range(p_ini, p_fin+1):
+            if ktype == "49":
                 fpath_img = os.path.join(img_dirs, f"JMBD_4949_{num:05}.jpg")
-                if num == p_ini:
-                    c = "I"
-                elif num == p_fin:
-                    c = "F"
-                else:
-                    c = "M"
-                res.append((fpath_img, c))
-        return res
+            else:
+                fpath_img = os.path.join(img_dirs, f"JMBD_4950_{num:05}.jpg")
+            if num == p_ini:
+                c = "I"
+            elif num == p_fin:
+                c = "F"
+            else:
+                c = "M"
+            res.append((fpath_img, c))
+    return res
 
 def create_structure(path_res, classes):
     if not os.path.exists(path_res):
@@ -75,51 +76,128 @@ def create_structure(path_res, classes):
             if not os.path.exists(p):
                 os.mkdir(p)
 
+def create_structure_crossBundles(path_res, classes):
+    if not os.path.exists(path_res):
+        os.mkdir(path_res)
+    res = []
+    for t in ["tr49", "tr50"]:
+        path_res_ = os.path.join(path_res, t)
+        res.append(path_res_)
+        if not os.path.exists(path_res_):
+            os.mkdir(path_res_)
+        print(path_res_)
+        tr, te, val = os.path.join(path_res_, "train"), os.path.join(path_res_, "test"), os.path.join(path_res_, "validation")
+        if not os.path.exists(tr):
+            os.mkdir(tr)
+        if not os.path.exists(te):
+            os.mkdir(te)
+        if not os.path.exists(val):
+            os.mkdir(val)
+        for c in classes:
+            for t in [tr,te,val]:
+                p = os.path.join(t, c)
+                if not os.path.exists(p):
+                    os.mkdir(p)
+    return res
+
 def load(fpath, height, width):
     img = cv2.imread(fpath)
     if height is not None and width is not None:
         img = cv2.resize(img, (width, height)) 
     return img
 
+def create_data(tr_data, te_data, val_data, path_res):
+    for fpath_img, c in tqdm.tqdm(tr_data):
+        path_folder = os.path.join(path_res, "train", c)
+        fname = fpath_img.split("/")[-1].split(".")[0]
+        path_save = os.path.join(path_folder, fname+".jpg")
+        img = load(fpath_img, width=width, height=height)
+        cv2.imwrite(path_save, img)
+    for fpath_img, c in tqdm.tqdm(te_data):
+        path_folder = os.path.join(path_res, "test", c)
+        fname = fpath_img.split("/")[-1].split(".")[0]
+        path_save = os.path.join(path_folder, fname+".jpg")
+        img = load(fpath_img, width=width, height=height)
+        cv2.imwrite(path_save, img)
+    for fpath_img, c in tqdm.tqdm(val_data):
+        path_folder = os.path.join(path_res, "validation", c)
+        fname = fpath_img.split("/")[-1].split(".")[0]
+        path_save = os.path.join(path_folder, fname+".jpg")
+        img = load(fpath_img, width=width, height=height)
+        cv2.imwrite(path_save, img)
+
 if __name__ == "__main__":
-    corpus = "JMBD4949"
+    corpus = "JMBD4950"
+    data="all"
     classes = ["I", "M", "F"]
-    img_dirs = "/data/carabela_segmentacion/idxs_JMBD4949/JMBD_4949"
-    csv_path = "/data/carabela_segmentacion/csv_gt/JMBD_4949_Clasificacion_20220405_2.csv"
-    # csv_path = "/data/carabela_segmentacion/csv_gt/JMBD_4950_Clasificacion_20220405.csv"
-    path_res = "/home/jose/projects/image_classif/data/JMBD4949"
+    # img_dirs = "/data/carabela_segmentacion/idxs_JMBD4949/JMBD_4949"
+    img_dirs = "/data/carabela_segmentacion/idxs_JMBD4950/images"
+    # csv_path = "/data/carabela_segmentacion/csv_gt/JMBD_4949_Clasificacion_20220405_2.csv"
+    csv_path = "/data/carabela_segmentacion/csv_gt/JMBD_4950_Clasificacion_20220405.csv"
+    
     auto_split = [0.60,0.10,0.30] # tr val test
     width, height = 768, 1024
     random_state=0
-    create_structure(path_res, classes)
     
-    if corpus == "JMBD4949":
-        res = init_JMBD4949(csv_path=csv_path, img_dirs=img_dirs)
-        if auto_split is not None:
-            num_tr = int(len(res) * auto_split[0])
-            num_val = int(len(res) * auto_split[1])
-            num_test = len(res) - num_tr - num_val
-            res = shuffle(res, random_state=random_state)
-            tr_data = res[:num_tr]
-            val_data = res[num_tr:num_tr+num_val]
-            te_data = res[num_tr+num_val:]
-            print(num_tr, num_val, num_test, len(tr_data), len(val_data), len(te_data))
-            for fpath_img, c in tqdm.tqdm(tr_data):
-                path_folder = os.path.join(path_res, "train", c)
-                fname = fpath_img.split("/")[-1].split(".")[0]
-                path_save = os.path.join(path_folder, fname+".jpg")
-                img = load(fpath_img, width=width, height=height)
-                cv2.imwrite(path_save, img)
-            for fpath_img, c in tqdm.tqdm(te_data):
-                path_folder = os.path.join(path_res, "test", c)
-                fname = fpath_img.split("/")[-1].split(".")[0]
-                path_save = os.path.join(path_folder, fname+".jpg")
-                img = load(fpath_img, width=width, height=height)
-                cv2.imwrite(path_save, img)
-            for fpath_img, c in tqdm.tqdm(val_data):
-                path_folder = os.path.join(path_res, "validation", c)
-                fname = fpath_img.split("/")[-1].split(".")[0]
-                path_save = os.path.join(path_folder, fname+".jpg")
-                img = load(fpath_img, width=width, height=height)
-                cv2.imwrite(path_save, img)
+    
+    if "JMBD" in corpus:
+        if data == "all":
+            img_dirs = "/data/carabela_segmentacion/idxs_JMBD4949/JMBD_4949"
+            csv_path = "/data/carabela_segmentacion/csv_gt/JMBD_4949_Clasificacion_20220405_2.csv"
+            res4949 = init_JMBD(csv_path=csv_path, img_dirs=img_dirs, corpus="JMBD4949")
+            img_dirs = "/data/carabela_segmentacion/idxs_JMBD4950/images"
+            csv_path = "/data/carabela_segmentacion/csv_gt/JMBD_4950_Clasificacion_20220405.csv"
+            res4950 = init_JMBD(csv_path=csv_path, img_dirs=img_dirs, corpus="JMBD4950")
+            path_res = "/home/jose/projects/image_classif/data/JMBD4949_4950"
+            res4949 = shuffle(res4949, random_state=random_state)
+            res4950 = shuffle(res4950, random_state=random_state)
+            create_structure_crossBundles(path_res, classes)
+            auto_split = 0.85 # tr val
+
+            path_res_ = os.path.join(path_res, "tr49")
+            num_tr = int(len(res4949) * auto_split)
+            tr_data = res4949[:num_tr]
+            val_data = res4949[num_tr:]
+            te_data = res4950
+            create_data(tr_data, te_data, val_data, path_res_)
+
+            path_res_ = os.path.join(path_res, "tr50")
+            num_tr = int(len(res4950) * auto_split)
+            tr_data = res4950[:num_tr]
+            val_data = res4950[num_tr:]
+            te_data = res4949
+            create_data(tr_data, te_data, val_data, path_res_)
+
+        else:
+            path_res = "/home/jose/projects/image_classif/data/JMBD4950"
+            create_structure(path_res, classes)
+            res = init_JMBD(csv_path=csv_path, img_dirs=img_dirs, corpus=corpus)
+            if auto_split is not None:
+                num_tr = int(len(res) * auto_split[0])
+                num_val = int(len(res) * auto_split[1])
+                num_test = len(res) - num_tr - num_val
+                res = shuffle(res, random_state=random_state)
+                tr_data = res[:num_tr]
+                val_data = res[num_tr:num_tr+num_val]
+                te_data = res[num_tr+num_val:]
+                print(num_tr, num_val, num_test, len(tr_data), len(val_data), len(te_data))
+                create_data(tr_data, te_data, val_data, path_res)
+                # for fpath_img, c in tqdm.tqdm(tr_data):
+                #     path_folder = os.path.join(path_res, "train", c)
+                #     fname = fpath_img.split("/")[-1].split(".")[0]
+                #     path_save = os.path.join(path_folder, fname+".jpg")
+                #     img = load(fpath_img, width=width, height=height)
+                #     cv2.imwrite(path_save, img)
+                # for fpath_img, c in tqdm.tqdm(te_data):
+                #     path_folder = os.path.join(path_res, "test", c)
+                #     fname = fpath_img.split("/")[-1].split(".")[0]
+                #     path_save = os.path.join(path_folder, fname+".jpg")
+                #     img = load(fpath_img, width=width, height=height)
+                #     cv2.imwrite(path_save, img)
+                # for fpath_img, c in tqdm.tqdm(val_data):
+                #     path_folder = os.path.join(path_res, "validation", c)
+                #     fname = fpath_img.split("/")[-1].split(".")[0]
+                #     path_save = os.path.join(path_folder, fname+".jpg")
+                #     img = load(fpath_img, width=width, height=height)
+                #     cv2.imwrite(path_save, img)
             
