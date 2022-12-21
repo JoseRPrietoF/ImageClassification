@@ -26,7 +26,8 @@ steps=[10]
 seed = 1
 # work_JMBD4949_4950_256feats_1example_rnnunits_64_rnnlayers3_cnnFalse_RGB/checkpoints/exp1_exp1/0_1oguiho2/checkpoints/epoch=18512-step=18512.ckpt
 # checkpoint_load = "work_JMBD4949_4950_1024feats_rnnunits_256_rnnlayers3_cnnFalse_RGB_relative_split_notForced_noBI/checkpoints/exp1_exp1/0_edjf8iut/checkpoints/epoch=499-step=63999.ckpt"
-checkpoint_load = "/data2/jose/projects/image_classif/work_JMBD4949_4950_tr49_resnet50/checkpoints/exp_JMBD4949_4950_tr49_resnet50_size1024_exp_JMBD4949_4950_tr49_resnet50_size1024/3_2qdjex9p/checkpoints/epoch=11-step=3299.ckpt"
+# checkpoint_load = "/data2/jose/projects/image_classif/work_JMBD4949_4950_tr49_resnet50/checkpoints/exp_JMBD4949_4950_tr49_resnet50_size1024_exp_JMBD4949_4950_tr49_resnet50_size1024/3_2qdjex9p/checkpoints/epoch=11-step=3299.ckpt"
+checkpoint_load = "/data2/jose/projects/image_classif/work_hisclima_resnet50_size2562/checkpoints/exp_hisclima_resnet50_exp_hisclima_resnet50/0_ayr064k3/checkpoints/epoch=14-step=584.ckpt"
 do_train = True
 model = "resnet50"
 
@@ -34,8 +35,10 @@ model = "resnet50"
 # img_dirs = f"/home/jose/projects/image_classif/data/Hisclima"
 
 tr_="tr49"
-corpus = f"JMBD4949_4950_{tr_}"
-img_dirs = f"/home/jose/projects/image_classif/data/JMBD4949_4950/{tr_}"
+# corpus = f"JMBD4949_4950_{tr_}"
+corpus = f"hisclima"
+# img_dirs = f"/home/jose/projects/image_classif/data/JMBD4949_4950/{tr_}"
+img_dirs = f"/home/jose/projects/image_classif/data/Hisclima"
 
 # corpus = f"JMBD4949"
 # img_dirs = "/home/jose/projects/image_classif/data/{}".format(corpus)
@@ -46,7 +49,7 @@ EPOCHS = 0 #1600
 # width, height = int(1536.959604286892), int(82.0964550700742)
 # width, height = 2700,90
 # width, height = 512,512
-width, height = 1024,1024
+width, height = 256,256
 exp_name = f"exp_{corpus}_{model}_size{width}"
 learning_rate = 0.001 # 0.0005
 momentum = 0
@@ -54,7 +57,8 @@ num_input_channels=3
 k_steps=1
 opts=None
 # work_dir = f"work_{corpus}_{model}"
-work_dir = "work_JMBD4949_4950_tr49_resnet50"
+# work_dir = "work_JMBD4949_4950_tr49_resnet50"
+work_dir = f"work_hisclima_resnet50_size2562"
 
 device = torch.device("cuda:{}".format(gpu - 1) if gpu else "cpu")
 
@@ -90,8 +94,8 @@ fnames = [i['image'].filename for i in imgDataset.dataset['test']]
 net.eval()
 named_layers = dict(net.named_modules())
 
-# layer = 'model.encoder.stages.3.layers.2.layer.2.convolution'
-layer = "model_clasif.1.activation"
+layer = 'model.encoder.stages.3.layers.2.layer.2.convolution'
+#  layer = "model_clasif.1.activation"
 cam_extractor = SmoothGradCAMpp(net, layer) #'layer4'
 # Preprocess your data and feed it to the model
 
@@ -124,6 +128,6 @@ for i, batch in enumerate(test_loader):
     plt.imshow(result)
     plt.axis('off')
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     p = os.path.join(path_save_imgs, f"{fname}.jpg")
     plt.savefig(p)

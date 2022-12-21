@@ -161,7 +161,10 @@ class Net(pl.LightningModule):
             x_text = batch['text']
             # x_text = torch.zeros_like(x_text)
             x_text = self.model_text(x_text)
-        x = batch['pixel_values']
+        try:
+            x = batch['pixel_values']
+        except:
+            x = batch
         x = self.model(x)
         if "resnet" in self.model_selected and not self.torchvision:
             x = self.model_clasif(x.last_hidden_state)

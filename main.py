@@ -37,12 +37,12 @@ layers=[64,64]
 # txt_path_te="/data2/jose/projects/docClasifIbPRIA22/data/JMBD4949_4950/IG_TFIDF/tr49/tfidf_te50.txt"
 # model = f"resnet50fusion{feats}feats"
 
-# corpus = f"hisclima"
-# img_dirs = f"/home/jose/projects/image_classif/data/Hisclima"
+corpus = f"hisclima"
+img_dirs = f"/home/jose/projects/image_classif/data/Hisclima"
 
-tr_="tr49"
-corpus = f"JMBD4949_4950_{tr_}"
-img_dirs = f"/home/jose/projects/image_classif/data/JMBD4949_4950/{tr_}"
+# tr_="tr49"
+# corpus = f"JMBD4949_4950_{tr_}"
+# img_dirs = f"/home/jose/projects/image_classif/data/JMBD4949_4950/{tr_}"
 
 # corpus = f"JMBD4949"
 # img_dirs = "/home/jose/projects/image_classif/data/{}".format(corpus)
@@ -53,7 +53,7 @@ EPOCHS = 15 #1600
 # width, height = int(1536.959604286892), int(82.0964550700742)
 # width, height = 2700,90
 # width, height = 512,512
-width, height = 1024,1024
+width, height = 256,256
 exp_name = f"exp_{corpus}_{model}"
 learning_rate = 0.001 # 0.0005
 momentum = 0
@@ -62,7 +62,7 @@ k_steps=1
 opts=None
 str_layers = "_".join([str(x) for x in layers])
 # work_dir = f"work_{corpus}_{model}_size{width}_{str_layers}_v3"
-work_dir = f"work_{corpus}_{model}_size{width}"
+work_dir = f"work_{corpus}_{model}_size{width}2"
 # print(work_dir)
 # exit()
 
