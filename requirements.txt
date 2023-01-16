@@ -1,0 +1,14 @@
+datasets==2.2.1
+matplotlib==3.5.0
+numpy==1.20.3
+opencv_python==4.5.5.62
+Pillow==9.4.0
+pytorch_lightning==1.5.7
+scikit_learn==1.2.0
+shap==0.40.0
+torch==1.10.2
+torchcam==0.3.1
+torchmetrics==0.6.2
+torchvision==0.11.3
+tqdm==4.62.3
+transformers==4.18.0
