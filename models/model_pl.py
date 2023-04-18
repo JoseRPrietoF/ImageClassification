@@ -123,16 +123,34 @@ class Net(pl.LightningModule):
                     linear = nn.Linear(new_shape, n_classes)
                     self.model_clasif = nn.Sequential(*[  conv, conv2, nn.Flatten(), linear])
                 # self.model_clasif = nn.Sequential(*[ debug(), conv, debug(), conv2, debug(), nn.Flatten(), debug(), linear])
-                
+                    print(self.model_clasif)
         elif "swintiny" in model:
             self.model = SwinForImageClassification.from_pretrained("microsoft/swin-tiny-patch4-window7-224")
             self.model.classifier = nn.Linear(768, n_classes)
+            print(self.model)
+        elif "swinbase" in model:
+            self.model = SwinForImageClassification.from_pretrained("microsoft/swin-base-patch4-window7-224")
+            self.model.classifier = nn.Linear(1024, n_classes)
+            print(self.model)
+        elif "swinv2_base" in model:
+            # self.model = SwinForImageClassification.from_pretrained("microsoft/swinv2-base-patch4-window16-256")
+            self.model = SwinForImageClassification.from_pretrained("microsoft/swinv2-base-patch4-window12to24-192to384-22kto1k-ft")
+            self.model.classifier = nn.Linear(1024, n_classes)
+            print(self.model)
         elif "convnext" in model:
+            if "large" in model:
+                self.model = ConvNextForImageClassification.from_pretrained("facebook/convnext-large-224")
+                self.model.classifier = nn.Linear(768, n_classes)
+            elif "tiny" in model:
+                self.model = ConvNextForImageClassification.from_pretrained("facebook/convnext-tiny-224")
+                self.model.classifier = nn.Linear(768, n_classes)
+            elif "base" in model:
+                self.model = ConvNextForImageClassification.from_pretrained("facebook/convnext-base-384")
+                self.model.classifier = nn.Linear(1024, n_classes)
             
-            self.model = ConvNextForImageClassification.from_pretrained("facebook/convnext-tiny-224")
-            self.model.classifier = nn.Linear(768, n_classes)
+            print(self.model)
 
-        print(self.model_clasif)
+        
         # inputs = feature_extractor(image, return_tensors="pt")
 
         # with torch.no_grad():
