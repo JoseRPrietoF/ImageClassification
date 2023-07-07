@@ -100,6 +100,7 @@ class  ImageDatasetProd(pl.LightningDataModule):
         print(self.dataset)
         self.label2tag = self.get_label_dict(self.dataset['test'])
         self.tag2label = {v:k for k,v in self.label2tag.items()}
+        print(self.tag2label)
 
     def predict_dataloader(self):
         num_workers = multiprocessing.cpu_count()

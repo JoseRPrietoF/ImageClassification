@@ -5,6 +5,32 @@ from PD import levenshtein
 def check_consistency(res:list):
     pass
 
+def create_acts_SiSe(path_file:str, used_pages_gt:set=None, args=None):
+    f = open(path_file, "r")
+    lines = f.readlines()
+    f.close()
+    acts = []
+    aux = []
+    used_pages = set()
+    for line in lines:
+        line = line.replace("\t", " ").strip()
+        line = re.sub(' +', ' ', line)
+        line = line.split(" ")
+        fname, c = line[0], line[1]
+        num_page = "_".join(fname.split("_")[:-1])
+        # aux.append((num_page, fname))
+        fname = fname.split(".")[0]
+        aux.append(fname)
+        if args.alg == "raw":
+            if args.class_to_cut == c:
+                acts.append(aux)
+                aux = []
+        else:
+            if c in ["F", "C"]:
+                acts.append(aux)
+                aux = []
+    return acts
+
 def create_acts(path_file:str, used_pages_gt:set=None, args=None):
     f = open(path_file, "r")
     lines = f.readlines()
@@ -112,8 +138,12 @@ def sub_cost(a, b):
     return (np.abs(Na-Nb) + diff) / 2
 
 def main(args):
-    acts_gt, used_pages_gt = create_acts(args.path_gt, used_pages_gt=None, args=args)
-    acts_hyp, _ = create_acts(args.path_hyp, used_pages_gt=used_pages_gt, args=args)
+    if "SiSe" in args.corpus:
+        acts_gt  = create_acts_SiSe(args.path_gt, args=args)
+        acts_hyp = create_acts_SiSe(args.path_hyp, args=args)
+    else:
+        acts_gt, used_pages_gt = create_acts(args.path_gt, used_pages_gt=None, args=args)
+        acts_hyp, _ = create_acts(args.path_hyp, used_pages_gt=used_pages_gt, args=args)
     IG_order = read_IG(args.IG_file, args.num_words)
     v_acts_hyp = create_vector_acts([acts_hyp[2]], args.path_prix, IG_order)
     v_acts_gt = create_vector_acts([acts_gt[2]], args.path_prix, IG_order)   
@@ -160,6 +190,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create the spans')
+    parser.add_argument('--corpus', type=str, help='path to save the save', default="JMBD")
     parser.add_argument('--path_prix', type=str, help='path to save the save')
     parser.add_argument('--path_hyp', type=str, help='The span results file')
     parser.add_argument('--path_gt', type=str, help='The span results file')

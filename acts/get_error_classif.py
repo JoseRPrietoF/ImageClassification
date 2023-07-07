@@ -85,6 +85,10 @@ def main(args):
         num_pages = 1399
     elif "4952" in args.path_gt:
         num_pages = 980
+    elif "4949" in args.path_gt:
+        num_pages = 1615
+    elif "4952" in args.path_gt:
+        num_pages = 1481
     print(f"{num_err} errors -> {(num_err /num_pages)*100.0:.2f}%")
     print(f"Weighted: {num_errors} errors from {uniques} uniques -> {(weighted)*100.0:.2f}%  - {np.sum([v for k,v in num_errors.items()])} errors")
     # balanced_acc = balanced_accuracy_score(res_hyp, res_gt, adjusted=True)

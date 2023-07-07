@@ -27,13 +27,13 @@ def read_results(p:str):
     res_dict = {}
     for line in file.readlines()[1:]:
         # FNAME GT F I M
-        fname, _, fprob, iprob, mprob = line.strip().split(" ")
-        fprob, iprob, mprob = float(fprob), float(iprob), float(mprob)
+        fname, _, cprob, fprob, iprob, mprob = line.strip().split(" ")
+        cprob, fprob, iprob, mprob = float(cprob), float(fprob), float(iprob), float(mprob)
         # fprob = max(0.0001, fprob); iprob = max(0.0001, iprob); mprob = max(0.0001, mprob); 
-        pnumber = int(fname.split("_")[-1])
-        res.append([pnumber, fname, fprob, iprob, mprob])
-        hyp_l = rev_dict_.get(np.argmax([fprob, iprob, mprob]))
-        res_dict[fname] = [fprob, iprob, mprob]
+        pnumber = "_".join(fname.split("_")[:-1])
+        res.append([pnumber, fname, cprob, fprob, iprob, mprob])
+        hyp_l = rev_dict_.get(np.argmax([cprob, fprob, iprob, mprob]))
+        res_dict[fname] = [cprob, fprob, iprob, mprob]
     res.sort()
     file.close()
     order = [i[2] for i in res]
@@ -58,91 +58,42 @@ def read_results_text(p:str):
     file.close()
     # order = [i[2] for i in res]
     return res_arr, res
-
-def PD(results):
-    npages = len(results)
-    F,M,I = 0,1,2
-    m = [[0]*npages, [0]*npages, [0]*npages] # F M I 
-    for i, (pnumber, fname, gt, fprob, iprob, mprob) in enumerate(results):
-        m[F][i] = log(fprob)
-        m[M][i] = log(mprob)
-        m[I][i] = log(iprob)
-    #     print(m[0][i], m[1][i], m[2][i])
-    # exit()
-    res = [[0]*npages, [0]*npages, [0]*npages]
-    dict_ = {F:"F", M:"M", I:"I"}
-    res[F][0] = m[F][0] #F
-    res[M][0] = m[M][0] #M
-    res[I][0] = m[I][0]       #I
-    i=0; c="I";
-    BT = [[0]*npages, [0]*npages, [0]*npages]
-    for i in range(1, npages):
-        #A[j,I]
-        #Fanterior + logP(i|j)
-        res[I][i] = res[F][i-1] + m[I][i]
-        BT[I][i] = F
-        #A[j,M]
-        a = np.argmax([res[I][i-1], res[M][i-1]])
-        res[M][i] = [res[I][i-1], res[M][i-1]][a] + m[M][i]
-        if a == 0:
-            BT[M][i] = I
-        else:
-            BT[M][i] = M
-        #A[j,F]
-        a = np.argmax([res[M][i-1], res[I][i-1]])
-        res[F][i] = [res[M][i-1], res[I][i-1]][a]  + m[F][i]
-        if a == 0:
-            BT[F][i] = M
-        else:
-            BT[F][i] = I
-
-    
-    camino = []
-    t = F
-    errors = 0
-    err_msg = ""
-    for i in range(len(BT[0])-1, -1, -1):
-        err =  dict_[t] != results[i][2]
-        errors += err
-        if err:
-            err_msg = "**"
-        else:
-            err_msg = ""
-        # print(i, dict_[t], results[i][2], results[i][1], err_msg)
-        camino.append(dict_[t])
-        t = BT[t][i]
-
-    camino = camino[::-1]
-    return camino
-
 def PD_prob_trans(results, transProb:dict, res_text:dict=None, alpha=1.0):
     """
     transProb es el dict de probabilidades de transicion
     """
     npages = len(results)
-    F,M,I = 0,1,2
-    m = [[0]*npages, [0]*npages, [0]*npages] # F M I 
-    for i, (pnumber, fname, fprob, iprob, mprob) in enumerate(results):
+    C,F,M,I = 0,1,2,3
+    m = [[0]*npages, [0]*npages, [0]*npages, [0]*npages] # F M I 
+    for i, (pnumber, fname, cprob, fprob, iprob, mprob) in enumerate(results):
+        m[C][i] = log(cprob) * alpha
         m[F][i] = log(fprob) * alpha
         m[M][i] = log(mprob) * alpha
         m[I][i] = log(iprob) * alpha
         if res_text is not None:
-            _,fprob,iprob,mprob = res_text[fname]        
+            _,cprob,fprob,iprob,mprob = res_text[fname]     
+            m[C][i] += log(cprob) * ( 1.0 - alpha)   
             m[F][i] += log(fprob) * ( 1.0 - alpha)
             m[M][i] += log(mprob) * ( 1.0 - alpha)
             m[I][i] += log(iprob) * ( 1.0 - alpha)
-    res = [[0]*npages, [0]*npages, [0]*npages]
-    dict_ = {F:"F", M:"M", I:"I"}
+    res = [[0]*npages, [0]*npages, [0]*npages, [0]*npages]
+    dict_ = {C:"C", F:"F", M:"M", I:"I"}
+    res[C][0] = m[C][0] #F
     res[F][0] = m[F][0] #F
     res[M][0] = m[M][0] #M
     res[I][0] = m[I][0] #I
     i=0; c="I";
-    BT = [[0]*npages, [0]*npages, [0]*npages]
+    BT = [[0]*npages, [0]*npages, [0]*npages, [0]*npages]
     for i in range(1, npages):
         #A[j,I]
         #Fanterior + logP(i|j)
-        res[I][i] = res[F][i-1] + m[I][i]
-        BT[I][i] = F
+        arr = [res[F][i-1] + transProb[("F","I")], res[C][i-1] + transProb[("C","I")]]
+        a = np.argmax(arr)
+        res[I][i] = arr[a] + m[I][i]
+        if a == 0:
+            BT[I][i] = F
+        else:
+            BT[I][i] = C
         #A[j,M]
         arr = [res[I][i-1] + transProb[("I","M")], res[M][i-1] + transProb[("M","M")]]
         a = np.argmax(arr)
@@ -159,10 +110,23 @@ def PD_prob_trans(results, transProb:dict, res_text:dict=None, alpha=1.0):
             BT[F][i] = M
         else:
             BT[F][i] = I
+        
+        #A[j,C]
+        #Fanterior + logP(i|j)
+        arr = [res[F][i-1] + transProb[("F","C")], res[C][i-1] + transProb[("C","C")]]
+        a = np.argmax(arr)
+        res[C][i] = arr[a] + m[C][i]
+        if a == 0:
+            BT[C][i] = F
+        else:
+            BT[C][i] = C
 
     
     camino = []
-    t = F
+    if res[F][-1] > res[C][-1]:
+        t = F
+    else:
+        t = C
     errors = 0
     err_msg = ""
     for i in range(len(BT[0])-1, -1, -1):
@@ -176,7 +140,6 @@ def PD_prob_trans(results, transProb:dict, res_text:dict=None, alpha=1.0):
         t = BT[t][i]
 
     camino = camino[::-1]
-
     return camino
 
 def calc_prob_transitions(r:list):
@@ -198,7 +161,7 @@ def cut_segments(r:list, assum_consistency:bool=True):
 
 def get_imgs(path:str):
     all_imgs = []
-    for p in ["I", "M", "F"]:
+    for p in ["I", "M", "F", "C"]:
         imgs_path = os.path.join(path, p)
         imgs_list = [x.split("/")[-1].split(".")[0] for x in glob.glob(os.path.join(imgs_path, "*jpg"))]
         all_imgs.extend(imgs_list)
@@ -222,21 +185,37 @@ def get_transition_probs(GT_path):
     if_c = sequence.count("IF")
     mm_c = sequence.count("MM")
     mf_c = sequence.count("MF")
-    total = im_c + if_c + mm_c + mf_c
+    fc_c = sequence.count("FC")
+    fi_c = sequence.count("FI")
+    cc_c = sequence.count("CC")
+    ci_c = sequence.count("CI")
+    total = im_c + if_c + mm_c + mf_c + fc_c + cc_c + ci_c
     if_ = if_c / (if_c + im_c)
     im = im_c / (if_c + im_c)
-    mm = mm_c / (mf_c + mm_c)
-    mf = mf_c / (mf_c + mm_c)
+    try:
+        mm = mm_c / (mf_c + mm_c)
+        mf = mf_c / (mf_c + mm_c)
+    except:
+        mm = 0
+        mf = 0
+    fi = fi_c / (fi_c + fc_c)
+    fc = fc_c / (fi_c + fc_c)
+    # Cs
+    cc = cc_c /  (cc_c + ci_c)
+    ci = ci_c /  (cc_c + ci_c)
     m = {}
     # m[("I","M")]=np.log(0.4949152)
     # m[("I","F")]=np.log(0.5050848)
     # m[("M","M")]=np.log(0.8575610)
     # m[("M","F")]=np.log(0.1424390)
-    m[("I","M")]=np.log(im)
+    m[("I","M")]=log(im)
     m[("I","F")]=np.log(if_)
-    m[("M","M")]=np.log(mm)
-    m[("M","F")]=np.log(mf)
-    m[("F","I")]=np.log(1)
+    m[("M","M")]=log(mm)
+    m[("M","F")]=log(mf)
+    m[("F","I")]=np.log(fi)
+    m[("F","C")]=np.log(fc)
+    m[("C","C")]=np.log(cc)
+    m[("C","I")]=np.log(ci)
     # print(f"IF {if_}" )
     # print(f"IM {im}")
     # print(f"MM {mm}")
@@ -259,9 +238,8 @@ def main(p:str, sorted_imgs:list, alg:str, GT:str):
     # print(f'{num_exps_pd} expedients')
     # print("-----------------------------")
     # print("FNAME \t C \t probFinal \t probInitial \t probMiddle")
-    
     for img, c in zip(sorted_imgs, res):
-        print(img, "\t ", "\t ", c, f" \t {res_dict[img][0]} \t {res_dict[img][1]} \t {res_dict[img][2]}")
+        print(img, "\t ", "\t ", c, f" \t {res_dict[img][0]} \t {res_dict[img][1]} \t {res_dict[img][2]} \t {res_dict[img][3]}")
 
     # print(results)
 
@@ -284,13 +262,9 @@ if __name__ == "__main__":
     if folder_orig == "":
         folder_orig = prod
     # print(f'Prod for folder {prod}')
-    # path_res = f"/data2/jose/projects/image_classif/work_JMBD_{prod}_prod_{model}_size1024/results"
-    # path_imgs = f"/data2/jose/projects/image_classif/data/JMBD4949_4950/prod_{prod}/test"
-    if "SiSe" in folder_orig:
-        path_res = f"/home/jose/projects/image_classif/works/SiSe/work_{model}_size1024/results"
-        path_imgs = f"/home/jose/projects/image_classif/data/SiSe/cut/test"
-    else:
-        path_res = f"/data2/jose/projects/image_classif/works/1folder/work_JMBD{folder_orig}_LOO_{model}_size1024/results_JMBD{prod}"
-        path_imgs = f"/data2/jose/projects/image_classif/data/JMBD/JMBD{prod}/test"
+    path_res = f"/home/jose/projects/image_classif/works/SiSe/work_{model}_size1024/results"
+    path_imgs = f"/home/jose/projects/image_classif/data/SiSe/cut/test"
+
+
     
     main(path_res, get_imgs(path_imgs), alg=alg, GT=args.GT)

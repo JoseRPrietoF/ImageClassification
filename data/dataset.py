@@ -17,7 +17,7 @@ def worker_init_fn(_):
 
 class  ImageDataset(pl.LightningDataModule):
 
-    def __init__(self, train_transforms=None, val_transforms=None, test_transforms=None, dims=None, opts=None, batch_size=64,  width=120, height=60, nchannels=1, work_dir="", img_dirs="", corpus="", args={}, model="resnet50", txt_path_tr:str="", txt_path_te:str="", nfeats:int=1024):
+    def __init__(self, train_transforms=None, val_transforms=None, test_transforms=None, dims=None, opts=None, batch_size=64,  width=120, height=60, nchannels=1, work_dir="", img_dirs="", corpus="", args={}, model="resnet50", txt_path_tr:str="", txt_path_te:str="", nfeats:int=1024, n_classes=3):
         super().__init__(train_transforms=train_transforms, val_transforms=val_transforms, test_transforms=test_transforms, dims=dims)
         # self.setup(opts)
         size=width
@@ -31,10 +31,9 @@ class  ImageDataset(pl.LightningDataModule):
         self.work_dir = work_dir
         self.args = args
         self.corpus = corpus
-        if "JMBD" in self.corpus:
-            self.n_classes = 3
-        elif "hisclima" in self.corpus:
-            self.n_classes = 8
+        self.n_classes = n_classes
+        # elif "hisclima" in self.corpus:
+        #     self.n_classes = 8
         if nchannels == 1:
             self.channels = "L"
         elif nchannels == 3:
@@ -118,7 +117,7 @@ class  ImageDataset(pl.LightningDataModule):
         return res
 
     def setup(self, stage):
-        print("-----------------------------------------------")
+        print(f"----------------------------------------------- {self.img_dirs}")
         self.dataset = load_dataset("imagefolder", data_dir=self.img_dirs)
 
         self.label2tag = self.get_label_dict(self.dataset['validation'])
@@ -131,7 +130,7 @@ class  ImageDataset(pl.LightningDataModule):
         tr_dataset = self.dataset['train']
         # tr_dataset.set_transform(self.transforms)
         tr_dataset_loader = DataLoader(
-            dataset= tr_dataset,
+            dataset= tr_dataset,        
             batch_size=self.batch_size,
             num_workers=num_workers,
             shuffle=True,
