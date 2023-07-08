@@ -42,21 +42,6 @@ def main(args):
     # txt_path_te="/data2/jose/projects/docClasifIbPRIA22/data/JMBD4949_4950/IG_TFIDF/tr49/tfidf_te50.txt"
     # model = f"resnet50fusion{feats}feats"
 
-    # corpus = f"hisclima"
-    # img_dirs = f"/home/jose/projects/image_classif/data/Hisclima"
-
-    # tr_="tr49"
-    # corpus = f"JMBD4949_4950_{tr_}"
-    # img_dirs = f"/home/jose/projects/image_classif/data/JMBD4949_4950/{tr_}"
-
-    # corpus = f"JMBD4949"
-    # img_dirs = "/home/jose/projects/image_classif/data/{}".format(corpus)
-
-    # corpus = f"JMBD4949_4950/prod"
-    # img_dirs = "/home/jose/projects/image_classif/data/{}".format(corpus)   
-    # corpus = f"JMBD4949_4950_prod"
-
-    # corpus = f"JMBD4949_4950/prod"
     img_dirs = args.img_dirs
     # corpus = f"JMBD4949_4950_prod"
     corpus = args.corpus
@@ -65,12 +50,10 @@ def main(args):
     gpu = args.gpu
     batch_size = args.batch_size #16
     EPOCHS = args.epochs #15 for resnet
-    # width, height = int(1536.959604286892), int(82.0964550700742)
-    # width, height = 2700,90
-    width, height = args.width, args.height
-    # width, height = 512,512
-    # width, height = 256,256
-    # width, height = 384,384
+
+    # width, height = args.width, args.height
+    width, height = args.width, args.width
+
     exp_name = args.exp_name
     learning_rate = args.learning_rate # resnet
     # learning_rate = 0.01 # 0.0005
@@ -159,7 +142,7 @@ def parse_args():
     parser.add_argument('--work_dir', type=str, help='algorithm', default="work")
     parser.add_argument('--img_dirs', type=str, help='algorithm', default="/home/jose/projects/image_classif/data/")
     parser.add_argument('--n_classes', type=int, help='algorithm', default=3)
-    
+    parser.add_argument('--output_name', type=str, help='model', default="")
     args = parser.parse_args()
     args.do_train = args.do_train.lower() in ["si", "true"]
     return args

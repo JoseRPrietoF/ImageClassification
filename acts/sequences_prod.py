@@ -272,6 +272,8 @@ if __name__ == "__main__":
     parser.add_argument('--folder_orig', type=str, help='folder', default="")
     parser.add_argument('--alg', type=str, help='algorithm')
     parser.add_argument('--GT', type=str, help='algorithm', default="")
+    parser.add_argument('--path_res', type=str, help='algorithm', default="")
+    parser.add_argument('--path_imgs', type=str, help='algorithm', default="")
     # parser.add_argument('--class_to_cut', type=str, help='Class to use if alg==raw')
     args = parser.parse_args()
     # prod = "4946"
@@ -286,11 +288,8 @@ if __name__ == "__main__":
     # print(f'Prod for folder {prod}')
     # path_res = f"/data2/jose/projects/image_classif/work_JMBD_{prod}_prod_{model}_size1024/results"
     # path_imgs = f"/data2/jose/projects/image_classif/data/JMBD4949_4950/prod_{prod}/test"
-    if "SiSe" in folder_orig:
-        path_res = f"/home/jose/projects/image_classif/works/SiSe/work_{model}_size1024/results"
-        path_imgs = f"/home/jose/projects/image_classif/data/SiSe/cut/test"
-    else:
-        path_res = f"/data2/jose/projects/image_classif/works/1folder/work_JMBD{folder_orig}_LOO_{model}_size1024/results_JMBD{prod}"
-        path_imgs = f"/data2/jose/projects/image_classif/data/JMBD/JMBD{prod}/test"
+    path_res = args.path_res
+    path_imgs = args.path_imgs
+
     
     main(path_res, get_imgs(path_imgs), alg=alg, GT=args.GT)

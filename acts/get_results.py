@@ -145,8 +145,8 @@ def main(args):
         acts_gt, used_pages_gt = create_acts(args.path_gt, used_pages_gt=None, args=args)
         acts_hyp, _ = create_acts(args.path_hyp, used_pages_gt=used_pages_gt, args=args)
     IG_order = read_IG(args.IG_file, args.num_words)
-    v_acts_hyp = create_vector_acts([acts_hyp[2]], args.path_prix, IG_order)
-    v_acts_gt = create_vector_acts([acts_gt[2]], args.path_prix, IG_order)   
+    # v_acts_hyp = create_vector_acts([acts_hyp[2]], args.path_prix, IG_order)
+    # v_acts_gt = create_vector_acts([acts_gt[2]], args.path_prix, IG_order)   
     v_acts_hyp = create_vector_acts(acts_hyp, args.path_prix, IG_order)
     v_acts_gt = create_vector_acts(acts_gt, args.path_prix, IG_order)
     

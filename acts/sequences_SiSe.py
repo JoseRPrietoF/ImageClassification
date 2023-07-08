@@ -27,7 +27,9 @@ def read_results(p:str):
     res_dict = {}
     for line in file.readlines()[1:]:
         # FNAME GT F I M
+        # print(line.strip().split(" "))
         fname, _, cprob, fprob, iprob, mprob = line.strip().split(" ")
+        fname = fname.split(".")[0]
         cprob, fprob, iprob, mprob = float(cprob), float(fprob), float(iprob), float(mprob)
         # fprob = max(0.0001, fprob); iprob = max(0.0001, iprob); mprob = max(0.0001, mprob); 
         pnumber = "_".join(fname.split("_")[:-1])
@@ -204,10 +206,6 @@ def get_transition_probs(GT_path):
     cc = cc_c /  (cc_c + ci_c)
     ci = ci_c /  (cc_c + ci_c)
     m = {}
-    # m[("I","M")]=np.log(0.4949152)
-    # m[("I","F")]=np.log(0.5050848)
-    # m[("M","M")]=np.log(0.8575610)
-    # m[("M","F")]=np.log(0.1424390)
     m[("I","M")]=log(im)
     m[("I","F")]=np.log(if_)
     m[("M","M")]=log(mm)
@@ -216,12 +214,6 @@ def get_transition_probs(GT_path):
     m[("F","C")]=np.log(fc)
     m[("C","C")]=np.log(cc)
     m[("C","I")]=np.log(ci)
-    # print(f"IF {if_}" )
-    # print(f"IM {im}")
-    # print(f"MM {mm}")
-    # print(f"MF {mf}")
-    # print(f"FI {1}")
-    # exit()
     return m
 
 def main(p:str, sorted_imgs:list, alg:str, GT:str):
@@ -250,6 +242,8 @@ if __name__ == "__main__":
     parser.add_argument('--folder_orig', type=str, help='folder', default="")
     parser.add_argument('--alg', type=str, help='algorithm')
     parser.add_argument('--GT', type=str, help='algorithm', default="")
+    parser.add_argument('--path_res', type=str, help='algorithm', default="")
+    parser.add_argument('--path_imgs', type=str, help='algorithm', default="")
     # parser.add_argument('--class_to_cut', type=str, help='Class to use if alg==raw')
     args = parser.parse_args()
     # prod = "4946"
@@ -262,8 +256,9 @@ if __name__ == "__main__":
     if folder_orig == "":
         folder_orig = prod
     # print(f'Prod for folder {prod}')
-    path_res = f"/home/jose/projects/image_classif/works/SiSe/work_{model}_size1024/results"
-    path_imgs = f"/home/jose/projects/image_classif/data/SiSe/cut/test"
+    path_res = args.path_res
+    path_imgs = args.path_imgs
+
 
 
     
