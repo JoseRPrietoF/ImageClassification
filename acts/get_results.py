@@ -189,6 +189,15 @@ def main(args):
     # print(acts_gt)
 
 if __name__ == "__main__":
+    # a=np.array([0,1,0.5])
+    # b=np.array([1,1,1])
+    # c=np.array([0,0,1])
+    # d=np.array([1,0,0])
+    # acts_hyp = np.array([a, b+c+d])
+    # acts_gt = np.array([a+b, c+d])
+    # cost, edits = levenshtein(acts_hyp, acts_gt, cost_subs=sub_cost, del_cost=np.sum, ins_cost=np.sum)
+    # print(cost, edits)
+    # print(f"RW {np.sum(a+b+c+d)}")
     parser = argparse.ArgumentParser(description='Create the spans')
     parser.add_argument('--corpus', type=str, help='path to save the save', default="JMBD")
     parser.add_argument('--path_prix', type=str, help='path to save the save')
@@ -197,6 +206,6 @@ if __name__ == "__main__":
     parser.add_argument('--IG_file', type=str, help='The span results file')
     parser.add_argument('--num_words', type=int, help='The span results file', default=16384)
     parser.add_argument('--alg', type=str, help='algorithm')
-    parser.add_argument('--class_to_cut', type=str, help='Class to use if alg==raw')
+    parser.add_argument('--class_to_cut', type=str, help='Class to use if alg==raw', default="F")
     args = parser.parse_args()
     main(args)

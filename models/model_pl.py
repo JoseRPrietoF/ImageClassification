@@ -10,6 +10,8 @@ from .operations import ConvBlock
 import torchmetrics
 from transformers import AdamW, ResNetModel, SwinForImageClassification, ConvNextForImageClassification
 import torchvision.models as models
+from torch import Tensor
+from kornia.augmentation import ColorJitter, RandomChannelShuffle, RandomBrightness, RandomThinPlateSpline, RandomContrast, RandomSaturation, RandomAffine
 
 class debug(nn.Module):
 
@@ -22,6 +24,31 @@ class Identity(nn.Module):
         
     def forward(self, x):
         return x
+
+class DataAugmentation(nn.Module):
+    """Module to perform data augmentation using Kornia on torch tensors."""
+
+    def __init__(self, apply_color_jitter: bool = False) -> None:
+        super().__init__()
+        self._apply_color_jitter = apply_color_jitter
+
+        self.transforms = nn.Sequential(
+            RandomChannelShuffle(p=0.75),
+            RandomThinPlateSpline(p=0.75),
+            RandomBrightness(p=0.75),
+            RandomContrast(p=0.75),
+            RandomSaturation(p=0.75),
+            RandomAffine(p=0.75, degrees=(10,10), translate=(0.10,0.10))
+        )
+
+        self.jitter = ColorJitter(0.7, 0.5, 0.5, 0.5)
+
+    @torch.no_grad()  # disable gradients for effiency
+    def forward(self, x: Tensor) -> Tensor:
+        x_out = self.transforms(x)  # BxCxHxW
+        if self._apply_color_jitter:
+            x_out = self.jitter(x_out)
+        return x_out
 
 class Net(pl.LightningModule):
     def __init__(self, 
@@ -48,6 +75,7 @@ class Net(pl.LightningModule):
         self.milestones = milestones
         self.model_selected = model
         self.torchvision = torchvision
+        self.transform = DataAugmentation()  # per batch augmentation_kornia
         
         if "fusion" in model:
             model_text = [nn.Linear((len_feats), layers[0]),
@@ -172,7 +200,10 @@ class Net(pl.LightningModule):
         # self.automatic_optimization = False
         # print("self.automatic_optimization", self.automatic_optimization)
 
-
+    def on_after_batch_transfer(self, batch, dataloader_idx):
+        if self.trainer.training:
+            batch["pixel_values"] = self.transform(batch["pixel_values"])  # => we perform GPU/Batched data augmentation
+        return batch
 
     def forward(self, batch):
         if "fusion" in self.model_selected:
@@ -213,6 +244,7 @@ class Net(pl.LightningModule):
   
     def training_step(self, train_batch, batch_idx):
         # get the inputs
+        
         hyp = self(train_batch)
         hyp = self.m(hyp)
         loss = self.criterion(hyp, train_batch['labels'])

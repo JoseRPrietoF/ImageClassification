@@ -8,21 +8,30 @@ import numpy as np
 
 imgs_path = "/data/SimancasSearch/all"
 classes = ["I", "M", "F", "C"]
+# paths = {
+#     "train": 
+#         {
+#              "page_dir": "/data/SimancasSearch/partitions/tr_regions/"
+#         },
+#     "test": 
+#         {
+#              "page_dir": "/data/SimancasSearch/partitions/te_regions/"
+#         }
+    
+#     }
+
 paths = {
-    "train": 
-        {
-             "page_dir": "/data/SimancasSearch/partitions/tr_regions/"
-        },
     "test": 
         {
-             "page_dir": "/data/SimancasSearch/partitions/te_regions/"
+             "page_dir": "/data2/jose/projects/RPN_LSTM/works_SiSe/work_SiSe_1_chancery_get_config_mask_rcnn_R_50_FPN_1x_giou_acts/results/test/inference/page/"
         }
     
     }
 
 only_completes = False
 
-path_save = "SiSe/all"
+# path_save = "SiSe/all"
+path_save = "SiSe/all_RPN"
 
 eval = 0.15
 

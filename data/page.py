@@ -204,19 +204,26 @@ class PAGE():
             text_lines.append((coords, id))
         return text_lines
     
-    def get_textRegionsActs(self, max_iou=1.0, GT=False):
+    def get_textRegionsActs(self, max_iou=1.0, GT=False, no_probs=False):
         """
         A partir de un elemento del DOM devuelve, para cada textregion, sus coordenadas y su id
         :param dom_element:
         :return: [(coords, id)]
         """
         text_lines = []
+        i = 0
         for region in self.xmldoc.getElementsByTagName("TextRegion"):
             coords = self.get_coords(region)
-            id_act = region.attributes["id"].value
+            if "id" in region.attributes:
+                id_act = region.attributes["id"].value
+            else:
+                id_act = i
             custom = region.attributes["custom"].value # structure {type:AC;}
-            text = self.get_text_lines_from(region)
-            text = " ".join([t for c, t in text])
+            try:
+                text = self.get_text_lines_from(region)
+                text = "\n".join([t for c, t in text])
+            except:
+                text = None
             if GT:
                 probs = {"AM":0, "AF":0, "AI":0, "AC":0}
                 type_ = custom.split("type:")[-1].split(";")[0]
@@ -225,33 +232,19 @@ class PAGE():
                 probBbox, probType = 1, 1
                 probs[type_] = 1
             else:
-                
-                probs = region.attributes["probs"].value.split(";")
-                probs = {pp.split(":")[0]:float(pp.split(":")[1]) for pp in probs if pp}
-                type_, probBbox, probType, _ = custom.split(";")
-                type_ = type_.split("type:")[-1]
-                probBbox = float(probBbox.split("probBbox:")[-1])
-                probType = float(probType.split("probType:")[-1])
+                if no_probs:
+                    probs, probBbox, type_, probType = None, None, None, None
+                else:
+                    probs = region.attributes["probs"].value.split(";")
+                    probs = {pp.split(":")[0]:float(pp.split(":")[1]) for pp in probs if pp}
+                    type_, probBbox, probType, _ = custom.split(";")
+                    type_ = type_.split("type:")[-1]
+                    probBbox = float(probBbox.split("probBbox:")[-1])
+                    probType = float(probType.split("probType:")[-1])
             coords = np.array(coords)
             text_lines.append((coords, id_act, {"type":type_, "probBbox":probBbox, "probType":probType, "probs":probs, "text":text}))
-        final_list = []
-        coords_used = set()
-        # print(len(text_lines))
-        for i, (coords, id_act, info) in enumerate(text_lines):
-            if i in coords_used:
-                continue
-            for j in range(i+1, len(text_lines)):
-                coords2, id_act2, info2 = text_lines[j]
-                iou = bb_intersection_over_union(coords, coords2)
-                # print("----", coords, coords2, iou)
-                if iou > max_iou and i not in coords_used:
-                    final_list.append((coords, id_act, info))
-                    coords_used.add(i)
-                    coords_used.add(j)
-            if i not in coords_used:
-                final_list.append((coords, id_act, info))
-                coords_used.add(i)
-        return final_list
+            i += 1
+        return text_lines
     
 
     def get_text_lines_from(self, dom_element):

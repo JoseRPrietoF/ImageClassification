@@ -28,7 +28,7 @@ from main import parse_args
 def main(args):
     corpus = args.corpus
     img_dirs = args.img_dirs
-    prod = False
+    prod = True
     output_name = args.output_name
 
     steps=[10]
@@ -77,6 +77,7 @@ def main(args):
     # imgDataset_trained = ImageDataset(batch_size=batch_size, width=width, height=height, nchannels=num_input_channels, work_dir=work_dir, img_dirs=img_dirs, corpus=corpus, nfeats=feats, txt_path_tr=txt_path_tr, txt_path_te=txt_path_te)
 
     imgDataset = ImageDatasetProd(batch_size=batch_size, width=width, height=height, nchannels=num_input_channels, work_dir=work_dir, img_dirs=img_dirs, corpus=output_name, nfeats=feats, txt_path_tr=txt_path_tr, txt_path_te=txt_path_te, n_classes=args.n_classes)
+
 
     net = Net(  num_input_channels=num_input_channels,opts=opts,width=width, height=height,
                     learning_rate=learning_rate, n_classes=imgDataset.n_classes,momentum=momentum, milestones=steps, model=model, layers=layers, len_feats=feats

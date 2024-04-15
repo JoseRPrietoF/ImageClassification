@@ -22,6 +22,7 @@ from utils.functions import save_to_file
 # torch.backends.cudnn.deterministic = True
 # torch.backends.cudnn.benchmark = False
 import sys
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 def main(args):
 
@@ -79,22 +80,24 @@ def main(args):
     # wandb_logger = WandbLogger(project=exp_name)
     path_save = os.path.join(work_dir, "checkpoints")
     print(f"img_dirs {img_dirs}")
+    early_stop_callback = EarlyStopping(monitor="val_acc_epoch", min_delta=0.00, patience=args.patience, verbose=False, mode="max")
     imgDataset = ImageDataset(batch_size=batch_size, width=width, height=height, nchannels=num_input_channels, work_dir=work_dir, img_dirs=img_dirs, corpus=corpus, nfeats=feats, txt_path_tr=txt_path_tr, txt_path_te=txt_path_te, n_classes=args.n_classes)
 
 
     net = Net(  num_input_channels=num_input_channels,opts=opts,width=width, height=height,
                     learning_rate=learning_rate, n_classes=imgDataset.n_classes,momentum=momentum, milestones=steps, model=model, layers=layers, len_feats=feats
             )
-
     if checkpoint_load:
         net = net.load_from_checkpoint(checkpoint_load, num_input_channels=num_input_channels,opts=opts,width=width, height=height,
-                    learning_rate=learning_rate, n_classes=imgDataset.n_classes, model=model)
+                    learning_rate=learning_rate, n_classes=imgDataset.n_classes, model=model, strict=False)
     net.to(device)
     # wandb_logger.watch(net)
     trainer = pl.Trainer(min_epochs=EPOCHS, max_epochs=EPOCHS, logger=[logger_csv], #wandb_logger
                     default_root_dir=path_save,
                     gpus=gpu,
-                    log_every_n_steps=k_steps
+                    log_every_n_steps=k_steps,
+                    auto_lr_find=args.auto_lr_find,
+                    callbacks=[early_stop_callback]
                 )
     if do_train:
         trainer.fit(net, imgDataset)
@@ -132,7 +135,7 @@ def parse_args():
     parser.add_argument('--learning_rate', type=float, help='algorithm', default=0.001)
     parser.add_argument('--feats', type=int, help='algorithm', default=1024)
     parser.add_argument('--batch_size', type=int, help='algorithm', default=4)
-    parser.add_argument('--epochs', type=int, help='algorithm', default=30)
+    parser.add_argument('--epochs', type=int, help='algorithm', default=50)
     parser.add_argument('--gpu', type=int, help='algorithm', default=1)
     parser.add_argument('--layers', type=list, help='algorithm', default=[64,64])
     parser.add_argument('--milestones', type=list, help='algorithm', default=[10])
@@ -143,8 +146,13 @@ def parse_args():
     parser.add_argument('--img_dirs', type=str, help='algorithm', default="/home/jose/projects/image_classif/data/")
     parser.add_argument('--n_classes', type=int, help='algorithm', default=3)
     parser.add_argument('--output_name', type=str, help='model', default="")
+    parser.add_argument('--auto_lr_find', type=str, help='model', default="no")
+    parser.add_argument('--patience', type=int, help='model', default=10)
+    parser.add_argument('--da', type=str, help='data augmentation', default="true")
     args = parser.parse_args()
-    args.do_train = args.do_train.lower() in ["si", "true"]
+    args.do_train = args.do_train.lower() in ["si", "true", "yes"]
+    args.auto_lr_find = args.auto_lr_find.lower() in ["si", "true", "yes"]
+    args.da = args.da.lower() in ["si", "true", "yes"]
     return args
 
 if __name__ == "__main__":

@@ -1,9 +1,11 @@
-# combinations=('4946_4949' '4946_4950' '4946_4952' '4949_4950' '4949_4952' '4950_4952')
-combinations=('4950_4952')
-models=('resnet50') #convnext_base
+combinations=('4946_4949' '4946_4950' '4946_4952' '4949_4950' '4949_4952')
+# combinations=('4950_4952')
+# models=('resnet50') #convnext_base
+# models=('resnet18' 'resnet101' 'convnext_base')
+models=('resnet18 4 15' 'resnet101 2 20' 'convnext_base 2 20')
 width=1024
-batch_size=4
-epochs=15
+# batch_size=4
+# epochs=15
 work_dir_all=works/2folder
 img_dirs=data/JMBD/2folders
 corpus=JMBD
@@ -11,6 +13,10 @@ folders=('4946' '4949' '4950' '4952')
 img_dirs_test=data/JMBD
 for combination in "${combinations[@]}"; do
 for model in "${models[@]}"; do
+    set -- $model
+    model=$1
+    batch_size=$2
+    epochs=$3
     img_dirs_fold=${img_dirs}/JMBD_tr_${combination}
     exp_name=exp_${model}_size${width}
     work_dir=${work_dir_all}/work_JMBD_tr_${combination}_${model}_size${width}
@@ -28,3 +34,4 @@ done
 
 cd acts
 ./launch_get_results_2folder.sh
+cd ..

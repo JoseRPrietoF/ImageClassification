@@ -120,7 +120,7 @@ class  ImageDataset(pl.LightningDataModule):
         print(f"----------------------------------------------- {self.img_dirs}")
         self.dataset = load_dataset("imagefolder", data_dir=self.img_dirs)
 
-        self.label2tag = self.get_label_dict(self.dataset['validation'])
+        self.label2tag = self.get_label_dict(self.dataset['train'])
         self.tag2label = {v:k for k,v in self.label2tag.items()}
 
     def train_dataloader(self):

@@ -15,6 +15,7 @@ posibles_states = [("I", "M"), ("I", "F"), ("M", "M"), ("M", "F"), ("F", "I")]
 MINVALUE = np.finfo(float).eps
 
 def log(x):
+    return x
     if x > 0: return log_(x)
     else:
         # print(x) 
@@ -60,7 +61,8 @@ def read_results_text(p:str):
     file.close()
     # order = [i[2] for i in res]
     return res_arr, res
-def PD_prob_trans(results, transProb:dict, res_text:dict=None, alpha=1.0):
+
+def PD_prob_trans(results, transProb:dict, res_text:dict=None, alpha=1.0, open_group=False):
     """
     transProb es el dict de probabilidades de transicion
     """
@@ -125,10 +127,21 @@ def PD_prob_trans(results, transProb:dict, res_text:dict=None, alpha=1.0):
 
     
     camino = []
-    if res[F][-1] > res[C][-1]:
-        t = F
+    if open_group:
+        a = np.argmax([res[F][-1], res[I][-1], res[M][-1], res[C][-1]])
+        if a == 0:
+            t = F
+        elif a == 1:
+            t = I
+        elif a == 2:
+            t = M
+        else:
+            t = C
     else:
-        t = C
+        if res[F][-1] > res[C][-1]:
+            t = F
+        else:
+            t = C
     errors = 0
     err_msg = ""
     for i in range(len(BT[0])-1, -1, -1):

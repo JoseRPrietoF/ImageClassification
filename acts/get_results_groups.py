@@ -1,9 +1,62 @@
 ### obtaining the results
-import argparse, re, os, numpy as np
+import argparse, re, os, sys, numpy as np
 from PD import levenshtein
-from get_results import sub_cost, read_IG, append_prix, create_vector_acts
+from get_results import sub_cost, read_IG, append_prix
+DOSSIER_COURRANT = os.path.dirname(os.path.abspath(__file__))
+DOSSIER_PARENT = os.path.dirname(DOSSIER_COURRANT)
+sys.path.append(DOSSIER_PARENT)
+sys.path.append(os.path.dirname(DOSSIER_PARENT))
+from data.page import PAGE
+from acts.sequences_SiSe_all_pages import get_xmls
+from acts.get_results_groups_page import get_regions, append_text
 
-def create_acts_SiSe(path_file:str, used_pages_gt:set=None, args=None):
+def get_bbox(contours):
+    xmax ,xmin = np.max([ x[0] for x in contours]), np.min([ x[0] for x in contours])
+    ymax ,ymin = np.max([ x[1] for x in contours]), np.min([ x[1] for x in contours])
+    return [xmin, ymin, xmax, ymax]
+
+def create_vector_acts(acts:list, path_prix:str, IG_order:dict, regions_gt={}, replace_text=False):
+    # legajo = acts[0][0].split("_")[1]
+    res_acts = []
+    for act in acts:
+        vector = [0]*(len(IG_order)+1)
+        for page in act:
+            page_path_prix = os.path.join(path_prix, f"{page}.idx")
+            # print(page_path_prix)
+            page_name = "_".join(page.split("_")[:-1])
+            if replace_text:
+                # pname
+                pname = "_".join(page.split("_")[:-1])
+                coord_reg, info_Reg = regions_gt[pname]
+                pname = "_".join(pname.split("_")[:-1])
+                page_obj_hyp_text = replace_text[pname]
+                textlines = page_obj_hyp_text.get_textLines(get_bbox(coord_reg), min=args.max_iou)
+                text = '\n'.join([x[1] for x in textlines]).upper()
+            else:
+                text = regions_gt[page_name][1]['text'].upper()
+
+            vector = append_text(vector, text, IG_order)
+
+            # print(vector)
+            # exit()
+        # print(vector[-1], np.sum(vector[:-1]))
+        vector = vector[:-1] # last component is the "residual" or other words outside of IG
+        res_acts.append(vector)
+    return res_acts
+
+def restore_groups(v_acts, acts, end_with_class=False):
+    res = {}
+    for group, v_group in zip(acts, v_acts):
+        if end_with_class:
+            group_name = "_".join(group[0].split("_")[:-3])
+        else:
+            group_name = "_".join(group[0].split("_")[:-2])
+        list_g = res.get(group_name, [])
+        list_g.append((group, v_group))
+        res[group_name] = list_g
+    return res
+
+def create_acts_SiSe(path_file:str, args=None):
     f = open(path_file, "r")
     lines = f.readlines()
     f.close()
@@ -15,7 +68,6 @@ def create_acts_SiSe(path_file:str, used_pages_gt:set=None, args=None):
         line = line.split(" ")
         fname, c = line[0], line[1]
         fname = fname.split(".")[0]
-
         *name, npage, num, _ = fname.split("_")
         num = int(num.split(".")[0])
         name = "_".join(name)
@@ -44,25 +96,54 @@ def create_acts_SiSe(path_file:str, used_pages_gt:set=None, args=None):
             acts.append(aux)
     return acts
 
+def load_textlines(text_hyp_paths):
+    # get_textLines_normal
+    xmls = get_xmls(text_hyp_paths)
+    res = {}
+    # exit()
+    for xml in xmls:
+        name = xml.split("/")[-1].split(".")[0]
+        page = PAGE(xml)
+        # tls = page.get_textLines_normal()
+        res[name] = page
+    return res
+
 def main(args):
-    
+    regions_gt, pages_gt = get_regions(args.path_page_gt, get_text=True, is_GT=True)
     acts_gt  = create_acts_SiSe(args.path_gt, args=args)
     acts_hyp = create_acts_SiSe(args.path_hyp, args=args)
     IG_order = read_IG(args.IG_file, args.num_words)
-    v_acts_hyp = create_vector_acts(acts_hyp, args.path_prix, IG_order)
-    v_acts_gt = create_vector_acts(acts_gt, args.path_prix, IG_order)
+    textlines_hyp = False
+    if args.text_hyp != "no":
+        textlines_hyp = load_textlines(args.text_hyp)
+    v_acts_hyp = create_vector_acts(acts_hyp, args.path_page_gt, IG_order, regions_gt, replace_text=textlines_hyp)
+    v_acts_gt = create_vector_acts(acts_gt, args.path_page_gt, IG_order, regions_gt)
     total_RW_gt = np.sum(v_acts_gt)
     # print(len(v_acts_hyp), len(acts_hyp))
     # print(len(v_acts_gt), len(acts_gt))
     print(f"total_RW_gt {total_RW_gt}")
     print(f"Number of HYP acts {len(v_acts_hyp)} vs number of GT acts {len(v_acts_gt)}")
 
-    cost, edits = levenshtein(v_acts_hyp, v_acts_gt, cost_subs=sub_cost, del_cost=np.sum, ins_cost=np.sum)
+    groups_acts_v = restore_groups(v_acts_hyp, acts_hyp, end_with_class=True)
+    groups_acts_v_gt = restore_groups(v_acts_gt, acts_gt, end_with_class=True)
+    all_edits = []
+
+    for group_name, groups in groups_acts_v.items():
+        v_group = [x[1] for x in groups]
+        # print(groups)
+        
+        v_acts_gt_group = groups_acts_v_gt[group_name]
+        v_group_gt = [x[1] for x in v_acts_gt_group]
+        # print(v_acts_gt_group)
+        cost, edits = levenshtein(v_group, v_group_gt, cost_subs=sub_cost, del_cost=np.sum, ins_cost=np.sum)
+        all_edits.extend(edits)
+
+    # cost, edits = levenshtein(v_acts_hyp, v_acts_gt, cost_subs=sub_cost, del_cost=np.sum, ins_cost=np.sum)
     # print(edits)
     # print(f"Total cost: {cost} -- > {cost/total_RW_gt}" )
     delete_cost, ins_cost, subs_cost = 0, 0, 0
     num_dels, num_ins, num_subs, num_match = 0, 0, 0, 0
-    for edit in edits:
+    for edit in all_edits:
         cost = edit['cost']
         if edit['type'] == 'deletion':
             print(f"delete {edit} i {np.sum(v_acts_gt[edit['j']])} -> GT {acts_gt[edit['j']]}")
@@ -86,18 +167,20 @@ def main(args):
     print(f"GT {len(v_acts_gt)} = {num_match+num_subs+num_dels} : {len(v_acts_gt) == num_match+num_subs+num_dels}")
     print(f"HYP {len(v_acts_hyp)} = {num_match+num_subs+num_ins} : {len(v_acts_hyp) == num_match+num_subs+num_ins}")
 
-    
     # print(acts_gt)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create the spans')
     parser.add_argument('--corpus', type=str, help='path to save the save', default="JMBD")
-    parser.add_argument('--path_prix', type=str, help='path to save the save')
+    # parser.add_argument('--path_prix', type=str, help='path to save the save')
+    parser.add_argument('--path_page_gt', type=str, help='')
     parser.add_argument('--path_hyp', type=str, help='The span results file')
     parser.add_argument('--path_gt', type=str, help='The span results file')
     parser.add_argument('--IG_file', type=str, help='The span results file')
     parser.add_argument('--num_words', type=int, help='The span results file', default=16384)
     parser.add_argument('--alg', type=str, help='algorithm')
     parser.add_argument('--class_to_cut', type=str, help='Class to use if alg==raw')
+    parser.add_argument('--text_hyp', type=str, default='no')
+    parser.add_argument('--max_iou', type=float, help='no', default=0.3)
     args = parser.parse_args()
     main(args)

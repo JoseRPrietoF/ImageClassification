@@ -122,6 +122,7 @@ def PD_prob_trans(results, transProb:dict, res_text:dict=None, alpha=1.0):
     npages = len(results)
     F,M,I = 0,1,2
     m = [[0]*npages, [0]*npages, [0]*npages] # F M I 
+    results[0] = [results[0], results[1], 0, 1.0, 0]
     for i, (pnumber, fname, fprob, iprob, mprob) in enumerate(results):
         m[F][i] = log(fprob) * alpha
         m[M][i] = log(mprob) * alpha
@@ -209,8 +210,8 @@ def raw_process(results:list):
     sequence = []
     for i, (npage, fname, af, ai, am) in enumerate(results):
         sequence.append([fname, rev_dict_.get(np.argmax([af, ai, am]))])
-    sequence[0] = [sequence[0][0], "I"]
-    sequence[-1] = [sequence[-1][0], "F"]
+    # sequence[0] = [sequence[0][0], "I"]
+    # sequence[-1] = [sequence[-1][0], "F"]
     return [j for i,j in sequence]
 
 def get_transition_probs(GT_path):
@@ -245,9 +246,31 @@ def get_transition_probs(GT_path):
     # exit()
     return m
 
-def main(p:str, sorted_imgs:list, alg:str, GT:str):
+def prior_norm(results, GT):
+    file = open(GT, "r")
+    res_dict = {}
+    count = 0
+    for line in file.readlines():
+        # FNAME GT F I M
+        count += 1
+        fname, c = line.strip().split(" ")
+        s = res_dict.get(c, 0) + 1
+        res_dict[c] = s
+    for k,v in res_dict.items():
+        res_dict[k] = v/count
+    # print(results[0])
+    # print(res_dict)
+    for i, (pnumber, fname, fprob, iprob, mprob) in enumerate(results):
+        results[i] = [pnumber, fname, fprob/res_dict["F"], iprob/res_dict["F"], mprob/res_dict["M"]]
+    # print(results[0])
+    # exit()
+    return results
+
+def main(p:str, sorted_imgs:list, alg:str, GT:str, use_prior_norm:bool=False):
     results, order_gt, res_dict = read_results(p)
     res_text = None
+    if use_prior_norm:
+        results = prior_norm(results, GT)
     if alg == "PD":
         m = get_transition_probs(GT)
         res = PD_prob_trans(results, m)
@@ -259,7 +282,6 @@ def main(p:str, sorted_imgs:list, alg:str, GT:str):
     # print(f'{num_exps_pd} expedients')
     # print("-----------------------------")
     # print("FNAME \t C \t probFinal \t probInitial \t probMiddle")
-    
     for img, c in zip(sorted_imgs, res):
         print(img, "\t ", "\t ", c, f" \t {res_dict[img][0]} \t {res_dict[img][1]} \t {res_dict[img][2]}")
 
@@ -274,8 +296,11 @@ if __name__ == "__main__":
     parser.add_argument('--GT', type=str, help='algorithm', default="")
     parser.add_argument('--path_res', type=str, help='algorithm', default="")
     parser.add_argument('--path_imgs', type=str, help='algorithm', default="")
+    parser.add_argument('--use_prior_norm', type=str, help='algorithm', default="")
+    
     # parser.add_argument('--class_to_cut', type=str, help='Class to use if alg==raw')
     args = parser.parse_args()
+    args.use_prior_norm = args.use_prior_norm.lower() in ["yes", "si", "true"]
     # prod = "4946"
     # model = "resnet18"
     # alg = "greedy"
@@ -292,4 +317,4 @@ if __name__ == "__main__":
     path_imgs = args.path_imgs
 
     
-    main(path_res, get_imgs(path_imgs), alg=alg, GT=args.GT)
+    main(path_res, get_imgs(path_imgs), alg=alg, GT=args.GT, use_prior_norm=args.use_prior_norm)

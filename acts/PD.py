@@ -23,7 +23,6 @@ def costmatrix2(s1, s2, subs_cost, del_cost, ins_cost):
   previous_row = [ins_cost(np.sum(s2[:i+1])) for i in range(len(s2))]
   # previous_row.append(previous_row[-1] + np.sum(s2[-1]))
   previous_row.insert(0, 0)
-  print(previous_row)
   # print(previous_row)
   # exit()
   rows.append(list(previous_row))
@@ -62,17 +61,15 @@ def costmatrix(s1, s2, subs_cost, del_cost, ins_cost):
      rows[0][i+1] = del_cost(s2[:i+1])
   for i in range(len(s1)):
      rows[i+1][0] = ins_cost(s1[:i+1])
-
+  
   for i, c1 in tqdm.tqdm(enumerate(s1)):
     i += 1
     for j, c2 in enumerate(s2):
       j += 1
-      
       ins_cost_j = ins_cost(s1[i-1]) + rows[i-1][j]
       del_cost_j = del_cost(s2[j-1]) +  rows[i][j-1]
       subs_cost_j = subs_cost(s1[i-1], s2[j-1]) + rows[i-1][j-1]
       rows[i,j] = min(ins_cost_j, del_cost_j, subs_cost_j)
-
   return rows
 
 
@@ -81,12 +78,13 @@ def backtrace(s1, s2, rows):
   i, j = len(s1), len(s2)
  
   edits = []
- 
+  # print(rows)
   while(not (i == 0  and j == 0)):
     prev_cost = rows[i][j]
  
     neighbors = []
- 
+    # print(edits)
+    # print(i,j, prev_cost)
     if(i!=0 and j!=0):
       neighbors.append(rows[i-1][j-1])
     if(i!=0):
@@ -97,7 +95,8 @@ def backtrace(s1, s2, rows):
     min_cost = min(neighbors)
  
     if(min_cost == prev_cost):
-      i, j = i-1, j-1
+      # i, j = i-1, j-1
+      i, j = max(0, i-1), max(0, j-1)
       edits.append({'type':'match', 'i':i, 'j':j})
       #   min_cost = 0
     elif(i!=0 and j!=0 and min_cost == rows[i-1][j-1]):

@@ -27,7 +27,8 @@ seed = 1
 # work_JMBD4949_4950_256feats_1example_rnnunits_64_rnnlayers3_cnnFalse_RGB/checkpoints/exp1_exp1/0_1oguiho2/checkpoints/epoch=18512-step=18512.ckpt
 # checkpoint_load = "work_JMBD4949_4950_1024feats_rnnunits_256_rnnlayers3_cnnFalse_RGB_relative_split_notForced_noBI/checkpoints/exp1_exp1/0_edjf8iut/checkpoints/epoch=499-step=63999.ckpt"
 # checkpoint_load = "/data2/jose/projects/image_classif/work_JMBD4949_4950_tr49_resnet50/checkpoints/exp_JMBD4949_4950_tr49_resnet50_size1024_exp_JMBD4949_4950_tr49_resnet50_size1024/3_2qdjex9p/checkpoints/epoch=11-step=3299.ckpt"
-checkpoint_load = "/data2/jose/projects/image_classif/work_hisclima_resnet50_size2562/checkpoints/exp_hisclima_resnet50_exp_hisclima_resnet50/0_ayr064k3/checkpoints/epoch=14-step=584.ckpt"
+# checkpoint_load = "/data2/jose/projects/image_classif/work_hisclima_resnet50_size2562/checkpoints/exp_hisclima_resnet50_exp_hisclima_resnet50/0_ayr064k3/checkpoints/epoch=14-step=584.ckpt"
+checkpoint_load = "/home/jose/projects/image_classif/works/AHPC_encabezados/work_resnet50_size512/checkpoints/work/0/checkpoints/epoch=29-step=2639.ckpt"
 do_train = True
 model = "resnet50"
 
@@ -38,7 +39,8 @@ tr_="tr49"
 # corpus = f"JMBD4949_4950_{tr_}"
 corpus = f"hisclima"
 # img_dirs = f"/home/jose/projects/image_classif/data/JMBD4949_4950/{tr_}"
-img_dirs = f"/home/jose/projects/image_classif/data/Hisclima"
+# img_dirs = f"/home/jose/projects/image_classif/data/Hisclima"
+img_dirs = f"/home/jose/projects/image_classif/data/AHPC_cabeceras"
 
 # corpus = f"JMBD4949"
 # img_dirs = "/home/jose/projects/image_classif/data/{}".format(corpus)
@@ -49,31 +51,36 @@ EPOCHS = 0 #1600
 # width, height = int(1536.959604286892), int(82.0964550700742)
 # width, height = 2700,90
 # width, height = 512,512
-width, height = 256,256
+width, height = 512,512
 exp_name = f"exp_{corpus}_{model}_size{width}"
 learning_rate = 0.001 # 0.0005
 momentum = 0
 num_input_channels=3
+n_classes = 12
 k_steps=1
 opts=None
 # work_dir = f"work_{corpus}_{model}"
 # work_dir = "work_JMBD4949_4950_tr49_resnet50"
-work_dir = f"work_hisclima_resnet50_size2562"
+work_dir = f"/home/jose/projects/image_classif/works/AHPC_encabezados/work_resnet50_size512/"
 
 device = torch.device("cuda:{}".format(gpu - 1) if gpu else "cpu")
 
 logger_csv = CSVLogger(work_dir, name=exp_name)
 path_save = os.path.join(work_dir, "checkpoints")
 
-imgDataset = ImageDataset(batch_size=batch_size, width=width, height=height, nchannels=num_input_channels, work_dir=work_dir, img_dirs=img_dirs, corpus=corpus)
+imgDataset = ImageDataset(batch_size=batch_size, width=width, height=height, nchannels=num_input_channels, work_dir=work_dir, img_dirs=img_dirs, corpus=corpus, n_classes=n_classes)
 
-
+feats=1024
+layers=[64,64]
+# net = Net(  num_input_channels=num_input_channels,opts=opts,width=width, height=height,
+                #  learning_rate=learning_rate, n_classes=imgDataset.n_classes,momentum=momentum, milestones=steps, model=model, torchvision=False
+        #    )
 net = Net(  num_input_channels=num_input_channels,opts=opts,width=width, height=height,
-                 learning_rate=learning_rate, n_classes=imgDataset.n_classes,momentum=momentum, milestones=steps, model=model, torchvision=False
-           )
-
+                    learning_rate=learning_rate, n_classes=imgDataset.n_classes,momentum=momentum, milestones=steps, model=model, layers=layers, len_feats=feats
+            )
 net = net.load_from_checkpoint(checkpoint_load, num_input_channels=num_input_channels,opts=opts,width=width, height=height,
                 learning_rate=learning_rate, n_classes=imgDataset.n_classes, model=model)
+
 net.to(device)
 
 trainer = pl.Trainer(min_epochs=EPOCHS, max_epochs=EPOCHS, logger=[logger_csv], #wandb_logger
